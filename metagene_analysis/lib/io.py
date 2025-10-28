@@ -203,6 +203,8 @@ def excel_writer(output_path, data_frames):
     Create an excel sheet out of a dictionary of data_frames.
     Correct the width of each column.
     """
+
+
     header_only = []
     writer = pd.ExcelWriter(output_path, engine='xlsxwriter')
 
@@ -214,12 +216,24 @@ def excel_writer(output_path, data_frames):
         worksheet = writer.sheets[sheet_name_truncated]
         worksheet.freeze_panes(1, 0)
 
-        for idx, col in enumerate(df):
-            series = df[col]
+        for idx, col in enumerate(df.columns):
+            # Use iloc to get the column by position to avoid any ambiguity
+            series = df.iloc[:, idx]
+
             if col in header_only:
-                max_len = len(str(series.name)) + 2
+                max_len = len(str(col)) + 2
             else:
-                max_len = max((series.astype(str).str.len().max(), len(str(series.name)))) + 1
+                try:
+                    # Convert to string and calculate max length
+                    max_values = series.astype(str).apply(len).max()
+                    if pd.isna(max_values):
+                        max_values = 0
+                    max_header_len = len(str(col))
+                    max_len = max(max_values, max_header_len) + 1
+                except Exception:
+                    # Fallback to header length
+                    max_len = len(str(col)) + 2
+
             worksheet.set_column(idx, idx, max_len)
 
     writer.close()

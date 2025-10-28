@@ -332,11 +332,11 @@ def main() -> None:
         json_file_start = output_dir / f"readcounts_start_{mapping_method}.json"
         json_file_stop = output_dir / f"readcounts_stop_{mapping_method}.json"
 
-        with open(json_file_stop, "w", encoding="utf-8") as f:
-            json.dump(data['stop'], f)
-
         with open(json_file_start, "w", encoding="utf-8") as f:
             json.dump(data['start'], f)
+
+        with open(json_file_stop, "w", encoding="utf-8") as f:
+            json.dump(data['stop'], f)
 
         print(f"  Saved combined JSON for mapping method: {mapping_method}")
 

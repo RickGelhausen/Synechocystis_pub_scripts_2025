@@ -136,8 +136,8 @@ def json_dict_to_dataframe(coverage_dict):
                         rows.append({
                             'chrom': chrom,
                             'sample': sample,
-                            'read_length': read_length,
-                            'position': position,
+                            'read_length': int(read_length),  # CONVERT TO INT!
+                            'position': int(position),        # CONVERT TO INT!
                             'gene_id': gene_id,
                             'count': count
                         })
