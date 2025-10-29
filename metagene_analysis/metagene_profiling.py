@@ -16,10 +16,10 @@ import interlap
 
 from lib.bam_reader import LocusExtractor
 from lib.bam_reader import IntervalReader
-import lib.io as io
-import lib.misc as misc
-import lib.annotation as ann
-import lib.plotting as plotting
+from lib import io
+from lib import misc
+from lib import annotation as ann
+from lib import plotting
 
 
 def parse_command_line() -> argparse.Namespace:
