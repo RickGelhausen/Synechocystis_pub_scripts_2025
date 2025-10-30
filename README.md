@@ -8,6 +8,35 @@ This includes 3 parts:
  - `weblogo`: Scripts for generating weblogos from genome sequences.
 
 
+# Requirements
+
+To run all the scripts, you will require the following tools/libraries.
+
+- python3 >= 3.14.0
+- pysam >= 0.23.3
+- pandas >= 2.3.3
+- numpy >= 2.4.3
+- pyyam >= 0.23.3
+- interlap >= 0.2.7
+- openpyxl >= 3.1.5
+- xlsxwriter >= 3.2.9
+- weblogo >= 3.7.9
+
+Other versions may work, but the scripts were tested on the indicated versions.
+
+We recommend `mamba` (see [guide](https://mamba.readthedocs.io/en/latest/user_guide/mamba.html)) to install the exact requirements used during development.
+
+
+```
+mamba create -f metagene_profiling.yml
+```
+
+Then activate the environment.
+
+```
+mamba activate metagene_profiling
+```
+
 # Metagene Analysis
 
 The metagene analysis consists of the generation of per-position read-density plots.
@@ -23,26 +52,6 @@ Additionally, the `metagene_plotting.py` script allows directly using pre-proces
 
 Be aware that this script can run for several minutes, depending on the amount and size of the provided `.bam` files.
 
-## Requirements
-
-These scripts require:
-
-- python3 >= 3.14.0
-- pysam >= 0.23.3
-- pandas >= 2.3.3
-- numpy >= 2.4.3
-- pyyam >= 0.23.3
-- interlap >= 0.2.7
-- xlsxwriter >= 3.2.9
-
-Other versions may work, but the scripts were tested on the indicated versions.
-
-We recommend `mamba` to install the exact requirements used during development.
-If you intend to use all scripts in this repository, use the `combined.yml` instead.
-
-```
-mamba create -f conda_envs/metagene_profiling.yml
-```
 
 ## Usage
 
@@ -82,4 +91,38 @@ The config file contains all the information for the experimental used.
 | `outputFormats` | File formats for plot output (options: svg, pdf, png, jpg, interactive) |
 | `includePlotlyJS` | How to include plotly.js in interactive HTML files (options: integrated = embed ~3.7MB per file, online = reference online version requiring internet, local = reference local copy) |
 | `colorList` | Custom list of colors for plots; must have at least as many colors as read lengths; if empty, uses color-blind friendly colors automatically |
+
+# Loci Extraction
+
+Following metagene profiling and plot analysis, it may be necessary to investigate the underlying composition of specific peaks observed in the density plot.
+
+To this end, we provide the `extract_locus_data.py` script. This allows specifying specific peak positions and it returns a table containing all loci contributing to this position and the according read-counts.
+
+This can be important as many factors like artifacts from size selection, cDNA synthesis, or sequencing can cause pile-ups of reads that do not reflect genuine biological signals, such as ribosome occupancy or translational stalling.
+
+## Usage
+
+To use this script, you require the intermediate `.json` output files of the `metagene-profiling.py` script. These files contain all the information about each individual data point.
+
+Then you can simply run the script with the desired paramters.
+
+```
+python3 locus_extraction/extract_locus_data.py -i=/path/to/your/metagene/files/readcounts_start_threeprime.json -s <sample_name> -r <read_length> -p <position> -o output.xlsx --sort-by count
+```
+
+
+# Weblogo
+
+This contains a script that was used to create weblogos based on observations in the density plots. After extraction of spefic regions with `extract_locus_data.py`. The sequences for the loci in the excel sheet can be extracted and plotted as a weblogo.
+
+Additionally the helper script `merge_xlsx.py` can be used to merge several excel sheets. This was originally intended to merge multiple replicate tables and keep for each loci the best read count.
+
+## Usage
+
+The extraction of the sequences and use of weblogo are combined in a bash script.
+Run the following command:
+
+```
+bash weblogo/create_logo.sh -x <input>.xlsx -f genome.fa -g annotation.gff -o output_sequences.fa -s output_logo.svg
+```
 
