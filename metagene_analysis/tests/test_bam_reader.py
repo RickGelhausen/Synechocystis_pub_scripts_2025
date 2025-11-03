@@ -6,8 +6,8 @@ Tests for:
 - IntervalReader class
 """
 
-import pytest
 import sys
+import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 import interlap
@@ -81,6 +81,16 @@ class TestLocusExtractor:
         read1.is_reverse = False
         reads.append(read1)
 
+        read12 = Mock()
+        read12.reference_name = "chr1"
+        read12.get_tag.return_value = 1  # NH tag
+        read12.mapping_quality = 42
+        read12.is_unmapped = False
+        read12.reference_start = 150
+        read12.query_length = 30
+        read12.is_reverse = False
+        reads.append(read12)
+
         # Read 2: Minus strand, length 32
         read2 = Mock()
         read2.reference_name = "chr1"
@@ -107,6 +117,17 @@ class TestLocusExtractor:
         read4.mapping_quality = 42
         read4.is_unmapped = True
         reads.append(read4)
+
+        # Read 5: Different chromosome
+        read5 = Mock()
+        read5.reference_name = "chr2"
+        read5.get_tag.return_value = 1  # NH tag
+        read5.mapping_quality = 42
+        read5.is_unmapped = False
+        read5.reference_start = 150
+        read5.query_length = 30
+        read5.is_reverse = False
+        reads.append(read5)
 
         return reads
 
@@ -297,13 +318,13 @@ class TestLocusExtractor:
                                                 mock_reads):
         """Test that valid reads are properly processed and counted"""
         mock_bam = Mock()
-        mock_bam.fetch.return_value = [mock_reads[0]]  # Just the first valid read
+        mock_bam.fetch.return_value = mock_reads[0:2] + [mock_reads[-1]]  # Just the first two valid reads and the different chromosome
         mock_pysam.return_value = mock_bam
 
         start_dict, stop_dict = empty_dicts
 
         with patch('builtins.print'):
-            extractor = LocusExtractor(
+            _ = LocusExtractor(
                 mock_alignment_file,
                 "threeprime",
                 start_loci_interlaps,
@@ -316,6 +337,50 @@ class TestLocusExtractor:
         # Check that dictionaries were populated
         assert "chr1" in start_dict
         assert "test_sample" in start_dict["chr1"]
+        assert 30 in start_dict["chr1"]["test_sample"]
+        assert isinstance(start_dict["chr1"]["test_sample"][30], dict)
+        # Check that the correct gene was counted
+        # stop = 150 + 30 - 1 = 179, which overlaps gene1 (100-200)
+        # relative position: 179 - 100 = 79
+        # 79 - 50 (outside ORF) = 29 (window corrected position)
+        assert start_dict["chr1"]["test_sample"][30] == {29 : {"gene1" : 2}}
+        assert start_dict["chr2"]["test_sample"][30] == {}
+
+    @patch('pysam.AlignmentFile')
+    def test_extract_loci_processes_valid_reads_fiveprime(self, mock_pysam,
+                                                mock_alignment_file,
+                                                start_loci_interlaps,
+                                                stop_loci_interlaps,
+                                                config, empty_dicts,
+                                                mock_reads):
+        """Test that valid reads are properly processed and counted"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads[0:2]
+        mock_pysam.return_value = mock_bam
+
+        start_dict, stop_dict = empty_dicts
+
+        with patch('builtins.print'):
+            _ = LocusExtractor(
+                mock_alignment_file,
+                "fiveprime",
+                start_loci_interlaps,
+                stop_loci_interlaps,
+                config,
+                start_dict,
+                stop_dict
+            )
+
+        # Check that dictionaries were populated
+        assert "chr1" in start_dict
+        assert "test_sample" in start_dict["chr1"]
+        assert 30 in start_dict["chr1"]["test_sample"]
+        assert isinstance(start_dict["chr1"]["test_sample"][30], dict)
+        # Check that the correct gene was counted
+        # stop = 150 + 30 - 1 = 179, which overlaps gene1 (100-200)
+        # relative position: 150 - 100 = 50
+        # 50 - 50 (outside ORF) = 0 (window corrected position)
+        assert start_dict["chr1"]["test_sample"][30] == {0 : {"gene1" : 2}}
 
     @patch('pysam.AlignmentFile')
     def test_extract_loci_handles_missing_index(self, mock_pysam,
@@ -332,7 +397,7 @@ class TestLocusExtractor:
 
         with patch('builtins.print'):
             with pytest.raises(SystemExit):
-                extractor = LocusExtractor(
+                _ = LocusExtractor(
                     mock_alignment_file,
                     "threeprime",
                     start_loci_interlaps,
@@ -369,277 +434,246 @@ class TestLocusExtractor:
         assert result_stop is stop_dict
 
 
-# class TestIntervalReader:
-#     """Test suite for IntervalReader class"""
+class TestIntervalReader:
+    """Test suite for IntervalReader class"""
 
-#     @pytest.fixture
-#     def mock_alignment_file(self):
-#         """Create a mock alignment file path"""
-#         mock_path = Mock(spec=Path)
-#         mock_path.stem = "test_intervals"
-#         mock_path.__str__ = lambda x: "/path/to/test_intervals.bam"
-#         return mock_path
+    @pytest.fixture
+    def mock_alignment_file(self):
+        """Create a mock alignment file path"""
+        mock_path = Mock(spec=Path)
+        mock_path.stem = "test_intervals"
+        mock_path.__str__ = lambda x: "/path/to/test_intervals.bam"
+        return mock_path
 
-#     @pytest.fixture
-#     def mock_reads(self):
-#         """Create mock reads for IntervalReader testing"""
-#         reads = []
+    @pytest.fixture
+    def mock_reads(self):
+        """Create mock reads for IntervalReader testing"""
+        reads = []
 
-#         # Read 1: chr1, plus strand
-#         read1 = Mock()
-#         read1.reference_name = "chr1"
-#         read1.get_tag.return_value = 1
-#         read1.mapping_quality = 42
-#         read1.is_unmapped = False
-#         read1.reference_start = 100
-#         read1.query_length = 30
-#         read1.is_reverse = False
-#         reads.append(read1)
+        # Read 1: chr1, plus strand
+        read1 = Mock()
+        read1.reference_name = "chr1"
+        read1.get_tag.return_value = 1
+        read1.mapping_quality = 42
+        read1.is_unmapped = False
+        read1.reference_start = 100
+        read1.query_length = 30
+        read1.is_reverse = False
+        reads.append(read1)
 
-#         # Read 2: chr1, plus strand (another read on same chromosome)
-#         read2 = Mock()
-#         read2.reference_name = "chr1"
-#         read2.get_tag.return_value = 1
-#         read2.mapping_quality = 42
-#         read2.is_unmapped = False
-#         read2.reference_start = 200
-#         read2.query_length = 32
-#         read2.is_reverse = False
-#         reads.append(read2)
+        # Read 2: chr1, plus strand (another read on same chromosome)
+        read2 = Mock()
+        read2.reference_name = "chr1"
+        read2.get_tag.return_value = 1
+        read2.mapping_quality = 42
+        read2.is_unmapped = False
+        read2.reference_start = 200
+        read2.query_length = 32
+        read2.is_reverse = False
+        reads.append(read2)
 
-#         # Read 3: chr1, minus strand
-#         read3 = Mock()
-#         read3.reference_name = "chr1"
-#         read3.get_tag.return_value = 1
-#         read3.mapping_quality = 42
-#         read3.is_unmapped = False
-#         read3.reference_start = 300
-#         read3.query_length = 28
-#         read3.is_reverse = True
-#         reads.append(read3)
+        # Read 3: chr1, minus strand
+        read3 = Mock()
+        read3.reference_name = "chr1"
+        read3.get_tag.return_value = 1
+        read3.mapping_quality = 42
+        read3.is_unmapped = False
+        read3.reference_start = 300
+        read3.query_length = 28
+        read3.is_reverse = True
+        reads.append(read3)
 
-#         # Read 4: chr2, plus strand
-#         read4 = Mock()
-#         read4.reference_name = "chr2"
-#         read4.get_tag.return_value = 1
-#         read4.mapping_quality = 42
-#         read4.is_unmapped = False
-#         read4.reference_start = 150
-#         read4.query_length = 30
-#         read4.is_reverse = False
-#         reads.append(read4)
+        # Read 4: chr2, plus strand
+        read4 = Mock()
+        read4.reference_name = "chr2"
+        read4.get_tag.return_value = 1
+        read4.mapping_quality = 42
+        read4.is_unmapped = False
+        read4.reference_start = 150
+        read4.query_length = 30
+        read4.is_reverse = False
+        reads.append(read4)
 
-#         # Read 5: Should be filtered (multimapped)
-#         read5 = Mock()
-#         read5.reference_name = "chr1"
-#         read5.get_tag.return_value = 3
-#         read5.mapping_quality = 0
-#         read5.is_unmapped = False
-#         reads.append(read5)
+        # Read 5: Should be filtered (multimapped)
+        read5 = Mock()
+        read5.reference_name = "chr1"
+        read5.get_tag.return_value = 3
+        read5.mapping_quality = 0
+        read5.is_unmapped = False
+        reads.append(read5)
 
-#         return reads
+        return reads
 
-#     @patch('pysam.AlignmentFile')
-#     def test_init_calls_read_alignment_file(self, mock_pysam,
-#                                            mock_alignment_file, mock_reads):
-#         """Test that initialization calls _read_alignment_file"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = mock_reads
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_init_calls_read_alignment_file(self, mock_pysam,
+                                           mock_alignment_file, mock_reads):
+        """Test that initialization calls _read_alignment_file"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            _ = IntervalReader(mock_alignment_file)
 
-#         mock_pysam.assert_called_once_with(mock_alignment_file)
-#         mock_bam.fetch.assert_called_once()
+        mock_pysam.assert_called_once_with(mock_alignment_file)
+        mock_bam.fetch.assert_called_once()
 
-#     @patch('pysam.AlignmentFile')
-#     def test_read_alignment_file_counts_reads_per_chromosome(self, mock_pysam,
-#                                                              mock_alignment_file,
-#                                                              mock_reads):
-#         """Test that reads are properly counted per chromosome"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = mock_reads[:4]  # Exclude filtered read
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_read_alignment_file_counts_reads_per_chromosome(self, mock_pysam,
+                                                             mock_alignment_file,
+                                                             mock_reads):
+        """Test that reads are properly counted per chromosome"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads[:4]  # Exclude filtered read
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         # 3 reads on chr1, 1 read on chr2
-#         assert reader.no_accepted_reads_dict["chr1"] == 3
-#         assert reader.no_accepted_reads_dict["chr2"] == 1
+        # 3 reads on chr1, 1 read on chr2
+        assert reader.no_accepted_reads_dict["chr1"] == 3
+        assert reader.no_accepted_reads_dict["chr2"] == 1
 
-#     @patch('pysam.AlignmentFile')
-#     def test_read_alignment_file_creates_interlaps_by_strand(self, mock_pysam,
-#                                                              mock_alignment_file,
-#                                                              mock_reads):
-#         """Test that InterLap objects are created for each chromosome/strand combination"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = mock_reads[:4]
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_read_alignment_file_creates_interlaps_by_strand(self, mock_pysam,
+                                                             mock_alignment_file,
+                                                             mock_reads):
+        """Test that InterLap objects are created for each chromosome/strand combination"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads[:4]
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         # Should have 3 combinations: (chr1, +), (chr1, -), (chr2, +)
-#         assert ("chr1", "+") in reader.reads_interlap_dict
-#         assert ("chr1", "-") in reader.reads_interlap_dict
-#         assert ("chr2", "+") in reader.reads_interlap_dict
-#         assert ("chr2", "-") not in reader.reads_interlap_dict
+        # Should have 3 combinations: (chr1, +), (chr1, -), (chr2, +)
+        assert ("chr1", "+") in reader.reads_interlap_dict
+        assert ("chr1", "-") in reader.reads_interlap_dict
+        assert ("chr2", "+") in reader.reads_interlap_dict
+        assert ("chr2", "-") not in reader.reads_interlap_dict
 
-#     @patch('pysam.AlignmentFile')
-#     def test_read_alignment_file_filters_invalid_reads(self, mock_pysam,
-#                                                        mock_alignment_file,
-#                                                        mock_reads):
-#         """Test that reads with NH > 1, low quality, or unmapped are filtered"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = mock_reads  # Includes filtered reads
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_read_alignment_file_filters_invalid_reads(self, mock_pysam,
+                                                       mock_alignment_file,
+                                                       mock_reads):
+        """Test that reads with NH > 1, low quality, or unmapped are filtered"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads  # Includes filtered reads
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         # Should only count the 4 valid reads, not the 5th one
-#         total_reads = sum(reader.no_accepted_reads_dict.values())
-#         assert total_reads == 4
+        # Should only count the 4 valid reads, not the 5th one
+        total_reads = sum(reader.no_accepted_reads_dict.values())
+        assert total_reads == 4
 
-#     @patch('pysam.AlignmentFile')
-#     def test_read_alignment_file_stores_read_length_in_intervals(self, mock_pysam,
-#                                                                  mock_alignment_file,
-#                                                                  mock_reads):
-#         """Test that intervals store read length information"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = [mock_reads[0]]  # Single read
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_read_alignment_file_stores_read_length_in_intervals(self, mock_pysam,
+                                                                 mock_alignment_file,
+                                                                 mock_reads):
+        """Test that intervals store read length information"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = [mock_reads[0]]  # Single read
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         interlap_obj = reader.reads_interlap_dict[("chr1", "+")]
-#         # Find intervals overlapping the read position
-#         intervals = list(interlap_obj.find((100, 129)))
+        interlap_obj = reader.reads_interlap_dict[("chr1", "+")]
+        # Find intervals overlapping the read position
+        intervals = list(interlap_obj.find((100, 129)))
 
-#         assert len(intervals) == 1
-#         start, stop, read_length = intervals[0]
-#         assert start == 100
-#         assert stop == 129  # 100 + 30 - 1
-#         assert read_length == 30
+        assert len(intervals) == 1
+        start, stop, read_length = intervals[0]
+        assert start == 100
+        assert stop == 129  # 100 + 30 - 1
+        assert read_length == 30
 
-#     @patch('pysam.AlignmentFile')
-#     def test_read_alignment_file_handles_missing_index(self, mock_pysam,
-#                                                        mock_alignment_file):
-#         """Test that ValueError from missing index is handled"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.side_effect = ValueError("Index not found")
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_read_alignment_file_handles_missing_index(self, mock_pysam,
+                                                       mock_alignment_file):
+        """Test that ValueError from missing index is handled"""
+        mock_bam = Mock()
+        mock_bam.fetch.side_effect = ValueError("Index not found")
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             with pytest.raises(SystemExit):
-#                 reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            with pytest.raises(SystemExit):
+                _ = IntervalReader(mock_alignment_file)
 
-#     @patch('pysam.AlignmentFile')
-#     def test_output_returns_correct_data_structures(self, mock_pysam,
-#                                                     mock_alignment_file,
-#                                                     mock_reads):
-#         """Test that output() returns both dictionaries with correct structure"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = mock_reads[:4]
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_output_returns_correct_data_structures(self, mock_pysam,
+                                                    mock_alignment_file,
+                                                    mock_reads):
+        """Test that output() returns both dictionaries with correct structure"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads[:4]
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         interlaps, read_counts = reader.output()
+        interlaps, read_counts = reader.output()
 
-#         # Check interlaps structure
-#         assert isinstance(interlaps, dict)
-#         for key, value in interlaps.items():
-#             assert isinstance(key, tuple)
-#             assert len(key) == 2  # (chrom, strand)
-#             assert isinstance(value, interlap.InterLap)
+        # Check interlaps structure
+        assert isinstance(interlaps, dict)
+        for key, value in interlaps.items():
+            assert isinstance(key, tuple)
+            assert len(key) == 2  # (chrom, strand)
+            assert isinstance(value, interlap.InterLap)
 
-#         # Check read counts structure
-#         assert isinstance(read_counts, dict)
-#         assert "chr1" in read_counts
-#         assert "chr2" in read_counts
+        # Check read counts structure
+        assert isinstance(read_counts, dict)
+        assert "chr1" in read_counts
+        assert "chr2" in read_counts
 
-#     @patch('pysam.AlignmentFile')
-#     def test_empty_bam_file(self, mock_pysam, mock_alignment_file):
-#         """Test handling of empty BAM file"""
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = []
-#         mock_pysam.return_value = mock_bam
+    @patch('pysam.AlignmentFile')
+    def test_empty_bam_file(self, mock_pysam, mock_alignment_file):
+        """Test handling of empty BAM file"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = []
+        mock_pysam.return_value = mock_bam
 
-#         with patch('builtins.print'):
-#             reader = IntervalReader(mock_alignment_file)
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#         interlaps, read_counts = reader.output()
+        interlaps, read_counts = reader.output()
 
-#         assert len(interlaps) == 0
-#         assert len(read_counts) == 0
+        assert len(interlaps) == 0
+        assert len(read_counts) == 0
 
+    @patch('pysam.AlignmentFile')
+    def test_output_returns_correct_data(self, mock_pysam,
+                                            mock_alignment_file,
+                                            mock_reads):
+        """Test that output() returns both dictionaries with correct structure"""
+        mock_bam = Mock()
+        mock_bam.fetch.return_value = mock_reads[:4]
+        mock_pysam.return_value = mock_bam
 
-# # Integration-style tests
-# class TestLocusExtractorIntegration:
-#     """Integration tests for LocusExtractor with more realistic scenarios"""
+        with patch('builtins.print'):
+            reader = IntervalReader(mock_alignment_file)
 
-#     @patch('pysam.AlignmentFile')
-#     def test_full_workflow_threeprime_plus_strand(self, mock_pysam):
-#         """Test complete workflow for 3' mapping on plus strand"""
-#         # Setup
-#         mock_path = Mock(spec=Path)
-#         mock_path.stem = "sample1"
+        interlaps, read_counts = reader.output()
 
-#         # Create a read that overlaps with a gene
-#         read = Mock()
-#         read.reference_name = "chr1"
-#         read.get_tag.return_value = 1
-#         read.mapping_quality = 42
-#         read.is_unmapped = False
-#         read.reference_start = 140
-#         read.query_length = 30
-#         read.is_reverse = False
+        # Check structure
+        assert isinstance(interlaps, dict)
+        assert ("chr1", "+") in interlaps
+        assert isinstance(interlaps[("chr1", "+")], interlap.InterLap)
 
-#         mock_bam = Mock()
-#         mock_bam.fetch.return_value = [read]
-#         mock_pysam.return_value = mock_bam
+        # Compare CONTENTS by querying the InterLap
+        intervals_chr1_plus = list(interlaps[("chr1", "+")].find((0, 10000)))
+        intervals_chr1_plus.sort(key=lambda x: x[0])
 
-#         # Create interlaps with a gene
-#         start_interlaps = {}
-#         inter = interlap.InterLap()
-#         inter.update([(100, 200, "gene1")])
-#         start_interlaps[("chr1", "+")] = inter
+        # Now compare the interval lists
+        assert len(intervals_chr1_plus) == 2
+        assert intervals_chr1_plus[0] == (100, 129, 30)
+        assert intervals_chr1_plus[1] == (200, 231, 32)
 
-#         stop_interlaps = {}
-
-#         config = {
-#             "positionsOutsideORF": 50,
-#             "positionsInsideORF": 100
-#         }
-
-#         start_dict = {}
-#         stop_dict = {}
-
-#         with patch('builtins.print'):
-#             extractor = LocusExtractor(
-#                 mock_path,
-#                 "threeprime",
-#                 start_interlaps,
-#                 stop_interlaps,
-#                 config,
-#                 start_dict,
-#                 stop_dict
-#             )
-
-#         # Verify results
-#         assert "chr1" in start_dict
-#         assert "sample1" in start_dict["chr1"]
-#         assert 30 in start_dict["chr1"]["sample1"]
-
-#         # Check that position was mapped correctly
-#         positions = list(start_dict["chr1"]["sample1"][30].keys())
-#         assert len(positions) > 0
-
+        # Check read counts
+        assert read_counts["chr1"] == 3
+        assert read_counts["chr2"] == 1
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

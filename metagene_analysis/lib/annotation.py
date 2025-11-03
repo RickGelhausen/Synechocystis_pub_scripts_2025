@@ -50,6 +50,7 @@ def filter_annotation_identifiers(
     In the publication this was done this way, but applying the overlap filter last might be more reasonable to keep more genes.
     """
 
+
     # Get filtering parameters
     filtering_methods = config.get("filteringMethods", [])
 
@@ -166,22 +167,14 @@ def filter_annotation_identifiers(
 
         # Check boundary conditions
         if genome_length_dict:
-            if strand == "+":
-                if (
-                    beginning - positions_out_orf < 0
-                    or end + positions_out_orf
-                    > genome_length_dict.get(chromosome, float("inf"))
-                ):
-                    excluded_genes["boundary"] += 1
-                    continue
-            else:
-                if (
-                    beginning + positions_out_orf < 0
-                    or end - positions_out_orf
-                    > genome_length_dict.get(chromosome, float("inf"))
-                ):
-                    excluded_genes["boundary"] += 1
-                    continue
+            if (
+                beginning - positions_out_orf < 0
+                or end + positions_out_orf
+                > genome_length_dict.get(chromosome, float("inf"))
+            ):
+                excluded_genes["boundary"] += 1
+                continue
+
 
         # Gene passed all filters - add to identifiers
         filtered_identifiers.append((chromosome, beginning, end, strand))
