@@ -55,72 +55,6 @@ def window_normalize_df(df, window_size):
 
     return df
 
-
-def create_data_frame(metagene_dict, positions_out_ORF, positions_in_ORF, state):
-    """
-    Create a data frame containing the metagene profiling read counts.
-    """
-
-    dataframe_dict = {}
-    if state == "start":
-        coordinates = list(range(-positions_out_ORF, positions_in_ORF, 1))
-    else:
-        coordinates = list(range(-positions_in_ORF, positions_out_ORF, 1))
-
-    for chrom in metagene_dict:
-        if chrom not in dataframe_dict:
-            dataframe_dict[chrom] = pd.DataFrame()
-            dataframe_dict[chrom]["coordinates"] = coordinates
-        for read_length in sorted(metagene_dict[chrom].keys()):
-            dataframe_dict[chrom][f"{read_length}"] = metagene_dict[chrom][read_length]
-
-    return dataframe_dict
-
-def flatten_list(l):
-    """
-    Flatten a list of lists to a single list.
-    """
-    return [item for sublist in l for item in sublist]
-
-def equalize_dictionary_keys(start_dict, stop_dict, positions_out_ORF, positions_in_ORF):
-    """
-    Ensure that both dictionaries have the same set of keys.
-    Create new keys for missing values and initialize them with list of 0s.
-    """
-    metagene_area = np.full(positions_out_ORF + positions_in_ORF, 0)
-
-    unique_keys = set(start_dict.keys()).union(set(stop_dict.keys()))
-
-    start_list = flatten_list([[int(x) for x in start_dict[key].keys()] for key in unique_keys if key in start_dict])
-    stop_list = flatten_list([[int(x) for x in stop_dict[key].keys()] for key in unique_keys if key in stop_dict])
-
-    overall_min = min(start_list, stop_list)
-    overall_max = max(start_list, stop_list)
-
-    for key in unique_keys:
-        if key not in start_dict:
-            start_dict[key] = {}
-            for read_length in range(overall_min, overall_max + 1):
-                start_dict[key][read_length] = metagene_area
-
-        else:
-            for read_length in range(overall_min, overall_max + 1):
-                if read_length not in start_dict[key]:
-                    start_dict[key][read_length] = metagene_area
-
-        if key not in stop_dict:
-            stop_dict[key] = {}
-            for read_length in range(overall_min, overall_max + 1):
-                start_dict[key][read_length] = metagene_area
-
-        else:
-            for read_length in range(overall_min, overall_max + 1):
-                if read_length not in stop_dict[key]:
-                    stop_dict[key][read_length] = metagene_area
-
-    return start_dict, stop_dict
-
-
 def json_dict_to_dataframe(coverage_dict):
     """
     Convert nested JSON-style dictionary to a flat dataframe.
@@ -142,7 +76,8 @@ def json_dict_to_dataframe(coverage_dict):
                             'count': count
                         })
 
-    return pd.DataFrame(rows)
+    columns = ['chrom', 'sample', 'read_length', 'position', 'gene_id', 'count']
+    return pd.DataFrame(rows, columns=columns)
 
 def aggregate_coverage_dataframe(df, read_length_list=None):
     """
@@ -167,6 +102,10 @@ def apply_normalization(df, normalization_method, total_counts_dict=None):
     - total_counts_dict: {sample: {chrom: total_count}} or {sample: total_count} for CPM
     """
     df = df.copy()
+
+    if len(df) == 0:
+        return df
+
     if normalization_method == "raw":
         return df
 
