@@ -60,7 +60,6 @@ def create_interactive_html(fig_list, alignment_file_name, output_file, include_
     """
     Takes a list of figures and creates an output HTML form.
     """
-
     in_header = []
     html_string = INTRO_HTML + "\n"
     html_string += f"<h1>{alignment_file_name}</h1>\n"

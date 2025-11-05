@@ -2,9 +2,8 @@
 Contains miscellaneous scripts for different calculations.
 Author: Rick Gelhausen
 """
-import pandas as pd
-import numpy as np
 
+import pandas as pd
 
 def calculate_rpkm(gene_length, read_counts, total_counts):
     """
@@ -70,8 +69,8 @@ def json_dict_to_dataframe(coverage_dict):
                         rows.append({
                             'chrom': chrom,
                             'sample': sample,
-                            'read_length': int(read_length),  # CONVERT TO INT!
-                            'position': int(position),        # CONVERT TO INT!
+                            'read_length': int(read_length),
+                            'position': int(position),
                             'gene_id': gene_id,
                             'count': count
                         })

@@ -41,8 +41,6 @@ def parse_command_line() -> argparse.Namespace:
     return parser.parse_args()
 
 
-
-
 def extract_read_counts(bam_file, sample_name, config, genome_length_dict):
     """
     Extract read counts for a bam file with its own filtering.
@@ -53,10 +51,11 @@ def extract_read_counts(bam_file, sample_name, config, genome_length_dict):
 
     # Get mapping modes
     mapping_methods = config.get("mappingMethods", ["fiveprime"])
+    bam_file_path = Path(bam_file) if isinstance(bam_file, str) else bam_file
 
     print("Filtering annotation for this BAM file...")
 
-    ir = IntervalReader(bam_file)
+    ir = IntervalReader(bam_file_path)
     read_intervals_dict, total_counts_dict = ir.output()
 
     results = {}
@@ -87,7 +86,7 @@ def extract_read_counts(bam_file, sample_name, config, genome_length_dict):
         tmp_dict_stop = {}
 
         le = LocusExtractor(
-            bam_file,
+            bam_file_path,
             mapping_method,
             interlap_dict_start,
             interlap_dict_stop,

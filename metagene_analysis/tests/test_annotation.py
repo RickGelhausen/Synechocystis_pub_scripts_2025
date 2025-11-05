@@ -9,7 +9,7 @@ Tests for:
 import pytest
 import pandas as pd
 import interlap
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 from io import StringIO
 
 from lib.annotation import create_annotation_intervals_dict

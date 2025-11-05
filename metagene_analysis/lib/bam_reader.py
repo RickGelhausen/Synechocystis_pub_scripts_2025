@@ -108,7 +108,13 @@ class LocusExtractor:
         read the alignment file using pysam
         """
 
-        alignment_file = pysam.AlignmentFile(self.alignment_file_path)
+        try:
+            alignment_file = pysam.AlignmentFile(self.alignment_file_path)
+        except (FileNotFoundError, IOError):
+            sys.exit("Error: Unable to read alignment file.")
+        except ValueError:
+            sys.exit("Error: Invalid BAM file format!")
+
         try:
             for read in alignment_file.fetch():
                 chrom = read.reference_name
@@ -168,7 +174,13 @@ class IntervalReader():
         read the alignment file using pysam
         """
 
-        alignment_file = pysam.AlignmentFile(self.alignment_file_path)
+        try:
+            alignment_file = pysam.AlignmentFile(self.alignment_file_path)
+        except (FileNotFoundError, IOError):
+            sys.exit("Error: Unable to read alignment file.")
+        except ValueError:
+            sys.exit("Error: Invalid BAM file format!")
+
         tmp_dict = {}
         try:
             for read in alignment_file.fetch():

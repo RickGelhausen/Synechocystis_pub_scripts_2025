@@ -6,7 +6,7 @@ Author: Rick Gelhausen
 import interlap
 import pandas as pd
 
-import lib.misc as misc
+from lib import misc
 
 
 def create_annotation_intervals_dict(annotation_df):

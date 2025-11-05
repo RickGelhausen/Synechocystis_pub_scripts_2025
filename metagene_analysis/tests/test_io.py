@@ -16,7 +16,7 @@ import os
 import pytest
 import pandas as pd
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open, call
+from unittest.mock import Mock, patch, mock_open
 
 
 from lib.io import (
