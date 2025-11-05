@@ -135,6 +135,8 @@ def parse_read_lengths(read_lengths):
     for part in parts:
         if "-" in part:
             interval = part.split("-")
+            if not interval[0].isnumeric() or not interval[1].isnumeric():
+                raise ValueError("Read lengths must be numeric values.")
             if int(interval[0]) < int(interval[1]):
                 i1, i2 = int(interval[0]), int(interval[1])
             else:
@@ -143,6 +145,8 @@ def parse_read_lengths(read_lengths):
             for i in range(i1, i2+1):
                 read_lengths.add(i)
         else:
+            if not part.isnumeric():
+                raise ValueError("Read lengths must be numeric values.")
             read_lengths.add(int(part))
 
     return sorted(list(read_lengths))
@@ -167,30 +171,36 @@ def parse_genome_lengths(genome_file_path):
 def save_dataframes_to_excel(df, output_path):
     """
     Save dataframe to Excel with one sheet per chromosome.
-    Follows the original excel_writer format.
+    Expects df to contain data for a SINGLE sample only.
     """
+    # Validate single sample
+    if df['sample'].nunique() > 1:
+        raise ValueError(
+            f"Function expects single sample data, but got {df['sample'].nunique()} samples: "
+            f"{df['sample'].unique().tolist()}"
+        )
+
     # Group by chromosome and create pivot tables
     df_dict = {}
-
     for chrom in df['chrom'].unique():
         df_chrom = df[df['chrom'] == chrom]
 
-        # Pivot: rows=position, columns=sample_readlength combination
+        # Pivot: rows=position, columns=read_length only (since single sample)
         df_pivot = df_chrom.pivot_table(
             index='position',
-            columns=['sample', 'read_length'],
+            columns='read_length',  # Only read_length, not sample
             values='count',
             fill_value=0
         )
 
-        # Flatten column names: (sample, read_length) -> "sample_readlength"
-        df_pivot.columns = [f"{int(rl)}" for sample, rl in df_pivot.columns]
+        # Flatten column names: read_length -> "readlength"
+        df_pivot.columns = [f"{int(rl)}" for rl in df_pivot.columns]
 
         # Reset index to make position a column
         df_pivot = df_pivot.reset_index()
 
-        # Add sum column (sum across all samples/read_lengths)
-        df_pivot["sum"] = df_pivot[df_pivot.columns[1:]].sum(numeric_only=True, axis=1)
+        # Add sum column (sum across all read_lengths)
+        df_pivot["sum"] = df_pivot[df_pivot.columns[1:]].sum(axis=1)
 
         df_dict[chrom] = df_pivot
 

@@ -8,11 +8,11 @@ Unified metagene analysis pipeline:
 
 import argparse
 import json
-import sys
+
 from pathlib import Path
 
 import yaml
-import interlap
+
 
 from lib.bam_reader import LocusExtractor
 from lib.bam_reader import IntervalReader
@@ -20,7 +20,7 @@ from lib import io
 from lib import misc
 from lib import annotation as ann
 from lib import plotting
-
+from lib import metagene as mg
 
 def parse_command_line() -> argparse.Namespace:
     """
@@ -40,86 +40,8 @@ def parse_command_line() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-def extract_start_metagene_windows(annotation_identifiers, config) -> list:
-    """
-    Extract for each annotated CDS the window around each start codon.
-    """
-    windows = []
-    window = [-config["positionsOutsideORF"], config["positionsInsideORF"]]
-
-    if window[0] > window[1]:
-        sys.exit("Error: The left window position is larger than the right window position.")
-
-    for identifier in annotation_identifiers:
-        chrom, start, stop, strand = identifier
-        out_id = f"{chrom}:{start+1}-{stop+1}:{strand}"
-        cds_length = stop - start
-
-        # Check if positionsInsideORF is longer than the entire CDS
-        if window[0] < 0 and abs(window[1]) > cds_length:
-            continue
-
-        if strand == "+":
-            upstream_region = start + window[0]
-            downstream_region = start + window[1]
-        else:
-            upstream_region = stop - window[1]
-            downstream_region = stop - window[0]
-
-        windows.append((chrom, upstream_region, downstream_region, strand, out_id))
-
-    return windows
-
-def extract_stop_metagene_windows(annotation_identifiers, config) -> list:
-    """
-    Extract for each annotated CDS the window around each stop codon.
-    """
-    windows = []
-    window = [-config["positionsInsideORF"], config["positionsOutsideORF"]]
-
-    if window[0] > window[1]:
-        sys.exit("Error: The left window position is larger than the right window position.")
-
-    for identifier in annotation_identifiers:
-        chrom, start, stop, strand = identifier
-        out_id = f"{chrom}:{start+1}-{stop+1}:{strand}"
-        cds_length = stop - start
-
-        # Check if downstream is longer than the entire CDS
-        if window[0] < 0 and abs(window[0]) > cds_length:
-            continue
-
-        if strand == "+":
-            upstream_region = stop + window[0]
-            downstream_region = stop + window[1]
-        else:
-            upstream_region = start - window[1]
-            downstream_region = start - window[0]
-
-        windows.append((chrom, upstream_region, downstream_region, strand, out_id))
-
-    return windows
 
 
-def create_interlap_dict(metagene_windows, locus_map) -> dict:
-    """
-    Create an interlap dictionary for the metagene windows.
-    """
-    tmp_dict = {}
-    for chrom, start, stop, strand, identifier in metagene_windows:
-        if identifier in locus_map:
-            identifier = locus_map[identifier]
-
-        if (chrom, strand) not in tmp_dict:
-            tmp_dict[(chrom, strand)] = [(start, stop, identifier)]
-        else:
-            tmp_dict[(chrom, strand)].append((start, stop, identifier))
-
-    interlap_dict = {}
-    for (chrom, strand), values in tmp_dict.items():
-        interlap_dict[(chrom, strand)] = interlap.InterLap(values)
-
-    return interlap_dict
 
 def extract_read_counts(bam_file, sample_name, config, genome_length_dict):
     """
@@ -151,14 +73,14 @@ def extract_read_counts(bam_file, sample_name, config, genome_length_dict):
         )
 
         # Step 2: Extract metagene windows
-        metagene_windows_start = extract_start_metagene_windows(cds_identifiers, config)
-        metagene_windows_stop = extract_stop_metagene_windows(cds_identifiers, config)
+        metagene_windows_start = mg.extract_start_metagene_windows(cds_identifiers, config)
+        metagene_windows_stop = mg.extract_stop_metagene_windows(cds_identifiers, config)
 
         print(f"Found {len(metagene_windows_start)} start windows and {len(metagene_windows_stop)} stop windows")
 
         # Step 3: Create interlap dictionaries
-        interlap_dict_start = create_interlap_dict(metagene_windows_start, locus_map)
-        interlap_dict_stop = create_interlap_dict(metagene_windows_stop, locus_map)
+        interlap_dict_start = mg.create_interlap_dict(metagene_windows_start, locus_map)
+        interlap_dict_stop = mg.create_interlap_dict(metagene_windows_stop, locus_map)
 
         # Step 4: Extract read counts for each mapping mode
         tmp_dict_start = {}
