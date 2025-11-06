@@ -216,4 +216,7 @@ class IntervalReader():
             sys.exit("Error: Ensure that all bam files used for readcounting have an appropriate index file (.bam.bai). You can create them using samtools index.")
 
     def output(self):
+        """
+        Return the output dict.
+        """
         return self.reads_interlap_dict, self.no_accepted_reads_dict

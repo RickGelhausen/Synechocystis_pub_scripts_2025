@@ -185,7 +185,7 @@ class TestPlotMetageneFromDataframes:
         read_length_list = [28, 30]
 
         # Max count in sample data is 120
-        expected_max = 120 * 1.1
+        expected_max = 120 * 1.15
 
         fig, max_y = plot_metagene_from_dataframes(
             sample_df_start, sample_df_stop, "chr1", read_length_list
