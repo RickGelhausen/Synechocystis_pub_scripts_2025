@@ -136,12 +136,12 @@ def create_metagene_plots(results, config, output_dir):
             df_stop = misc.json_dict_to_dataframe(data['stop'])
 
             # Aggregate by position (sum across genes)
-            df_start_agg_all = misc.aggregate_coverage_dataframe(df_start, read_length_list=None)  # All read lengths
-            df_stop_agg_all = misc.aggregate_coverage_dataframe(df_stop, read_length_list=None)   # All read lengths
+            df_start_agg_all = misc.aggregate_coverage_dataframe(df_start, read_length_list=None, config=config)  # All read lengths
+            df_stop_agg_all = misc.aggregate_coverage_dataframe(df_stop, read_length_list=None, config=config)   # All read lengths
 
             # Also create filtered version for plotting
-            df_start_agg_filtered = misc.aggregate_coverage_dataframe(df_start, read_length_list)  # Only requested
-            df_stop_agg_filtered = misc.aggregate_coverage_dataframe(df_stop, read_length_list)   # Only requested
+            df_start_agg_filtered = misc.aggregate_coverage_dataframe(df_start, read_length_list, config=config)  # Only requested
+            df_stop_agg_filtered = misc.aggregate_coverage_dataframe(df_stop, read_length_list, config=config)   # Only requested
 
             # Apply normalization
             total_counts_dict = data.get('total_counts', None)

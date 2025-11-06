@@ -385,7 +385,6 @@ class TestAggregateCoverageDataframe:
         assert len(chr1_rows) == 5
         assert len(chr2_rows) == 3
 
-
     def test_keeps_separate_samples(self, coverage_df):
         """Test that different samples are kept separate"""
         result = aggregate_coverage_dataframe(coverage_df)
@@ -452,6 +451,37 @@ class TestAggregateCoverageDataframe:
         result = aggregate_coverage_dataframe(coverage_df)
         expected_columns = ['chrom', 'sample', 'read_length', 'position', 'count']
         assert list(result.columns) == expected_columns
+
+
+    def test_aggregated_config_fills_missing_positions(self, coverage_df):
+        """Test that missing positions are filled with zeros based on config"""
+        config = {
+            'positionsOutsideORF': 10,
+            'positionsInsideORF': 10
+        }
+        result = aggregate_coverage_dataframe(coverage_df, config=config)
+
+        # For chr1/sample1/read_length=30, positions should range from -10 to 10
+        chr1_sample1_30 = result[
+            (result['chrom'] == 'chr1') &
+            (result['sample'] == 'sample1') &
+            (result['read_length'] == 30)
+        ]
+
+        expected_positions = set(range(-10, 11))
+        actual_positions = set(chr1_sample1_30['position'].values)
+
+        assert expected_positions == actual_positions
+
+        # Positions that were not in original data should have count 0
+        for pos in expected_positions:
+            row = chr1_sample1_30[chr1_sample1_30['position'] == pos]
+            if pos not in coverage_df[
+                (coverage_df['chrom'] == 'chr1') &
+                (coverage_df['sample'] == 'sample1') &
+                (coverage_df['read_length'] == 30)
+            ]['position'].values:
+                assert row['count'].iloc[0] == 0
 
     def test_empty_dataframe(self):
         """Test with empty DataFrame"""

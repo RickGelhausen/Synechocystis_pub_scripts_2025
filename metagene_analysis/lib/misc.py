@@ -78,16 +78,58 @@ def json_dict_to_dataframe(coverage_dict):
     columns = ['chrom', 'sample', 'read_length', 'position', 'gene_id', 'count']
     return pd.DataFrame(rows, columns=columns)
 
-def aggregate_coverage_dataframe(df, read_length_list=None):
+def aggregate_coverage_dataframe(df, read_length_list=None, config=None):
     """
     Aggregate counts by chromosome, sample, read_length, and position.
     Optionally filter by read lengths.
+    Fills in missing positions with 0 counts.
     """
     if read_length_list is not None:
         df = df[df['read_length'].isin(read_length_list)]
 
     # Sum counts across all genes for each position
     df_agg = df.groupby(['chrom', 'sample', 'read_length', 'position'])['count'].sum().reset_index()
+    print(config)
+    # Fill in missing positions with zeros
+    if config is not None:
+        positions_outside = config.get('positionsOutsideORF', 100)
+        positions_inside = config.get('positionsInsideORF', 250)
+
+        # Create complete position range
+        all_positions = list(range(-positions_outside, positions_inside + 1))
+
+        # Get all combinations of chrom, sample, read_length
+        if not df_agg.empty:
+            combinations = df_agg[['chrom', 'sample', 'read_length']].drop_duplicates()
+
+            # Create complete dataframe with all positions
+            complete_data = []
+            for _, row in combinations.iterrows():
+                for pos in all_positions:
+                    complete_data.append({
+                        'chrom': row['chrom'],
+                        'sample': row['sample'],
+                        'read_length': row['read_length'],
+                        'position': pos,
+                        'count': 0
+                    })
+
+            df_complete = pd.DataFrame(complete_data)
+
+            # Merge with actual data, preferring actual counts over zeros
+            df_agg = df_complete.merge(
+                df_agg,
+                on=['chrom', 'sample', 'read_length', 'position'],
+                how='left',
+                suffixes=('', '_actual')
+            )
+
+            # Use actual count if it exists, otherwise keep 0
+            if 'count_actual' in df_agg.columns:
+                df_agg['count'] = df_agg['count_actual'].fillna(df_agg['count'])
+                df_agg = df_agg.drop(columns=['count_actual'])
+            else:
+                df_agg['count'] = df_agg['count'].fillna(0)
 
     return df_agg
 

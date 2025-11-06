@@ -42,6 +42,8 @@ def plot_metagene_from_dataframes(df_start, df_stop, chromosome, read_length_lis
             "#D55E00"   # Vermillion
         ]
 
+    print(df_start)
+
     # Prepare colors and line styles
     colors, lines = prepare_colors_and_lines(color_list)
 
@@ -135,7 +137,8 @@ def plot_metagene_from_dataframes(df_start, df_stop, chromosome, read_length_lis
                 line=dict(
                     color=colors[color_idx],
                     dash=lines[color_idx],
-                    width=2.5
+                    width=2.5,
+                    shape='linear'
                 ),
                 marker=dict(
                     size=4,

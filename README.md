@@ -30,20 +30,8 @@ To run all the scripts, you will require the following tools/libraries.
 
 Other versions may work, but the scripts were tested on the indicated versions.
 
-We recommend `mamba` (see [guide](https://mamba.readthedocs.io/en/latest/user_guide/mamba.html)) to install the exact requirements used during development.
 
-
-```
-mamba create -f metagene_profiling.yml
-```
-
-Then activate the environment.
-
-```
-mamba activate metagene_profiling
-```
-
-Alternatively, you can use `uv`. Read more about this [here](https://github.com/astral-sh/uv).
+We recommend using `uv`. Read more about this [here](https://github.com/astral-sh/uv).
 
 ```
 uv sync
@@ -61,6 +49,18 @@ or run commands directly.
 uv run <command>
 ```
 
+Alternatively, you can use `mamba` (see [guide](https://mamba.readthedocs.io/en/latest/user_guide/mamba.html)) to install the exact requirements used during development.
+
+
+```
+mamba create -f metagene_profiling.yml
+```
+
+Then activate the environment.
+
+```
+mamba activate metagene_profiling
+```
 
 # Metagene Analysis
 
