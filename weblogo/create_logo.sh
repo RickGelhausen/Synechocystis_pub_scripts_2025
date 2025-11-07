@@ -14,6 +14,7 @@ DOWNSTREAM=10
 CUTOFF=0
 LOGO_START=-30
 LOGO_LENGTH=41
+FILETYPE="png"
 
 # Function to display usage
 usage() {
@@ -31,6 +32,7 @@ Optional arguments:
   -u    Nucleotides upstream of start codon (default: 30)
   -d    Nucleotides downstream of start codon (default: 10)
   -c    Minimum read count cutoff (default: 0)
+  -t    Output file type for WebLogo (default: png) (svg requires pdf2svg)
   -h    Display this help message
 
 Examples:
@@ -43,7 +45,7 @@ EOF
 }
 
 # Parse command line arguments
-while getopts "x:g:f:o:s:u:d:c:h" opt; do
+while getopts "x:g:f:o:s:u:d:c:t:h" opt; do
     case $opt in
         x) XLSX_FILE="$OPTARG" ;;
         g) GFF_FILE="$OPTARG" ;;
@@ -53,6 +55,7 @@ while getopts "x:g:f:o:s:u:d:c:h" opt; do
         u) UPSTREAM="$OPTARG" ;;
         d) DOWNSTREAM="$OPTARG" ;;
         c) CUTOFF="$OPTARG" ;;
+        t) FILETYPE="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -107,6 +110,7 @@ echo "  Output SVG:      $OUTPUT_SVG"
 echo "  Upstream:        $UPSTREAM nt"
 echo "  Downstream:      $DOWNSTREAM nt"
 echo "  Read cutoff:     $CUTOFF"
+echo "  File type:       $FILETYPE"
 echo "  Logo start pos:  $LOGO_START"
 echo "  Logo length:     $LOGO_LENGTH"
 echo ""
@@ -138,12 +142,12 @@ echo "----------------------------------------"
 # Check if weblogo is installed
 if ! command -v weblogo &> /dev/null; then
     echo "Error: weblogo command not found"
-    echo "Please install weblogo: pip install weblogo"
+    echo "Please install weblogo"
     exit 1
 fi
 
 weblogo -f "$OUTPUT_FA" \
-    -F svg \
+    -F "$FILETYPE" \
     -o "$OUTPUT_SVG" \
     -i "$LOGO_START" \
     -n "$LOGO_LENGTH" \

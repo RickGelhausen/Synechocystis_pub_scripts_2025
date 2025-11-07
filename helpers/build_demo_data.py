@@ -57,7 +57,7 @@ def create_annotation_file(output_path):
         f.write("##gff-version 3\n")
 
         # Gene 1: positions 500-799 (300 bp = 100 codons)
-        f.write("chr1\t.\tgene\t500\t799\t.\t+\t.\tID=gene1;Name=gene1\n")
+        f.write("chr1\t.\tgene\t500\t799\t.\t+\t.\tID=gene1;Name=gene1;\n")
         f.write("chr1\t.\tCDS\t500\t799\t.\t+\t0\tID=cds1;Parent=gene1\n")
 
         # Gene 2: positions 1500-1898 (399 bp = 133 codons)
@@ -73,14 +73,19 @@ def create_annotation_file(output_path):
 
 def create_bam_file(output_path, sample_name, read_counts):
     """
-    Create a BAM file with reads concentrated around start codons.
+    Create a BAM file with reads showing realistic Ribo-seq pattern:
+    - Sharp peak at P-site position for 5' mapping
+    - All read lengths peak at SAME position for 5' mapping
+    - For 3' mapping, peaks would naturally be offset by read length
 
     Args:
         output_path: Path to output BAM file
         sample_name: Name of the sample
-        read_counts: Dict mapping read_length to count for peak positions
-                     e.g., {28: 20, 30: 25, 32: 30}
+        read_counts: Dict mapping read_length to peak count
+                     e.g., {28: 50, 30: 60, 32: 70}
     """
+    import random
+
     print(f"Creating {output_path.name}...")
 
     # BAM header
@@ -91,17 +96,18 @@ def create_bam_file(output_path, sample_name, read_counts):
     }
 
     # Gene start positions (0-based, start of ATG codon)
-    gene_starts = [499, 1499, 2999]  # 0-based coordinates (GFF is 1-based)
+    gene_starts = [499, 1499, 2999]  # 0-based coordinates
+
+    # Fixed P-site offset for 5' mapping (same for all read lengths)
+    # P-site is typically ~12-15 nt from 5' end
+    FIXED_P_SITE_OFFSET = 12  # All read lengths peak here
 
     read_id = 0
 
     with pysam.AlignmentFile(output_path, "wb", header=header) as outf:
         for gene_start in gene_starts:
-            # Create reads at various positions around each gene start
-            # Positions relative to start codon: -50 to +50
-            positions = list(range(-50, 51, 5))
-
-            for rel_pos in positions:
+            # Create reads from -50 to +50 relative to start codon
+            for rel_pos in range(-50, 51):
                 abs_pos = gene_start + rel_pos
 
                 if abs_pos < 0:
@@ -109,21 +115,42 @@ def create_bam_file(output_path, sample_name, read_counts):
 
                 # Create reads for different read lengths
                 for read_length, peak_count in read_counts.items():
-                    # Calculate read count based on distance from start
-                    if -15 <= rel_pos <= 15:
-                        # Strong peak at start codon
+                    # For 5' mapping: all read lengths use the SAME P-site offset
+                    # Distance from expected P-site position
+                    distance_from_peak = abs(rel_pos - FIXED_P_SITE_OFFSET)
+
+                    if distance_from_peak == 0:
+                        # Sharp peak at P-site
                         count = peak_count
-                    elif -30 <= rel_pos <= 30:
-                        # Medium coverage nearby
-                        count = peak_count // 2
+                    elif distance_from_peak == 1:
+                        # Immediately adjacent: medium counts
+                        count = random.randint(peak_count // 4, peak_count // 3)
+                    elif distance_from_peak == 2:
+                        # Two positions away: lower
+                        count = random.randint(peak_count // 8, peak_count // 6)
+                    elif distance_from_peak <= 5:
+                        # Close but not peak: very low
+                        count = random.randint(1, max(2, peak_count // 15))
                     else:
-                        # Low background
-                        count = max(1, peak_count // 7)
+                        # Background: mostly 0-4, occasionally slightly higher
+                        rand = random.random()
+                        if rand < 0.3:  # 30% chance of 0
+                            count = 0
+                        elif rand < 0.6:  # 30% chance of 1
+                            count = 1
+                        elif rand < 0.85:  # 25% chance of 2-3
+                            count = random.randint(2, 3)
+                        else:  # 15% chance of 4-5
+                            count = random.randint(4, 5)
 
                     for _ in range(count):
                         a = pysam.AlignedSegment()
                         a.query_name = f"{sample_name}_read_{read_id}"
-                        a.query_sequence = "A" * read_length
+
+                        # Ensure sequence is exactly read_length
+                        base_seq = "ATCG" * (read_length // 4 + 1)
+                        a.query_sequence = base_seq[:read_length]
+
                         a.flag = 0
                         a.reference_id = 0
                         a.reference_start = abs_pos
@@ -183,7 +210,7 @@ rpkmThreshold: 10.0
 lengthCutoff: 50
 
 # Mapping methods to be considered (fiveprime, threeprime, centered, global)
-mappingMethods: ["threeprime"]
+mappingMethods: ["threeprime","fiveprime"]
 
 # Read lengths to be considered. Comma seperated string allows intervals denoted by "-" symbol (e.g. "22,23,27,34-35")
 readLengths: "28-32"
@@ -233,8 +260,6 @@ def main():
     create_annotation_file(output_dir / "annotation.gff")
     create_bam_file(output_dir / "bam_files" / "TIS-test-1.bam", "TIS-test-1", {28: 20, 30: 25, 32: 30})
     create_bam_file(output_dir / "bam_files" / "TIS-test-2.bam", "TIS-test-2", {28: 18, 30: 23, 32: 28})
-
-
 
 
 if __name__ == "__main__":

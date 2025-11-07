@@ -10,6 +10,7 @@ This script:
 """
 
 import sys
+from pathlib import Path
 
 import argparse
 import pandas as pd
@@ -26,8 +27,9 @@ def parse_gff(gff_file):
         dict: Dictionary mapping locus_tag to feature information
     """
     cds_features = {}
+    gff_path = Path(gff_file)
 
-    with open(gff_file, 'r', encoding='utf-8') as f:
+    with open(gff_path, 'r', encoding='utf-8') as f:
         for line in f:
             if line.startswith('#'):
                 continue
@@ -60,6 +62,13 @@ def parse_gff(gff_file):
                     'end': end,
                     'strand': strand
                 }
+            else:
+                cds_features[f"{seqid}:{start}-{end}:{strand}"] = {
+                    'seqid': seqid,
+                    'start': start,
+                    'end': end,
+                    'strand': strand
+                }
 
     return cds_features
 
@@ -72,7 +81,9 @@ def load_genome(fasta_file):
         dict: Dictionary mapping sequence IDs to SeqRecord objects
     """
     genome = {}
-    for record in SeqIO.parse(fasta_file, 'fasta'):
+    fasta_path = Path(fasta_file)
+
+    for record in SeqIO.parse(fasta_path, 'fasta'):
         genome[record.id] = record
     return genome
 
@@ -148,10 +159,19 @@ Examples:
 
     args = parser.parse_args()
 
+    # Convert arguments to Path objects
+    xlsx_path = Path(args.xlsx)
+    gff_path = Path(args.gff)
+    fasta_path = Path(args.fasta)
+    output_path = Path(args.output)
+
+    # Create output directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Load Excel file
-    print(f"Reading Excel file: {args.xlsx}")
+    print(f"Reading Excel file: {xlsx_path}")
     try:
-        df = pd.read_excel(args.xlsx)
+        df = pd.read_excel(xlsx_path)
     except Exception as e:
         print(f"Error reading Excel file: {e}")
         sys.exit(1)
@@ -167,13 +187,13 @@ Examples:
     print(f"Found {len(df_filtered)} locus tags with read count >= {args.cutoff}")
 
     # Parse GFF file
-    print(f"Parsing GFF file: {args.gff}")
-    cds_features = parse_gff(args.gff)
+    print(f"Parsing GFF file: {gff_path}")
+    cds_features = parse_gff(gff_path)
     print(f"Found {len(cds_features)} CDS features in GFF")
 
     # Load genome
-    print(f"Loading genome: {args.fasta}")
-    genome = load_genome(args.fasta)
+    print(f"Loading genome: {fasta_path}")
+    genome = load_genome(fasta_path)
     print(f"Loaded {len(genome)} sequences from genome")
 
     # Extract sequences
@@ -213,8 +233,8 @@ Examples:
         found += 1
 
     # Write output
-    print(f"\nWriting {found} sequences to: {args.output}")
-    SeqIO.write(output_records, args.output, 'fasta')
+    print(f"\nWriting {found} sequences to: {output_path}")
+    SeqIO.write(output_records, output_path, 'fasta')
 
     print("\nSummary:")
     print(f"  Total locus tags in Excel: {len(df)}")

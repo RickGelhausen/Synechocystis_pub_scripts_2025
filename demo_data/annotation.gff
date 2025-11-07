@@ -1,0 +1,7 @@
+##gff-version 3
+chr1	.	gene	500	799	.	+	.	ID=gene1;Name=gene1;
+chr1	.	CDS	500	799	.	+	0	ID=cds1;Parent=gene1
+chr1	.	gene	1500	1898	.	+	.	ID=gene2;Name=gene2
+chr1	.	CDS	1500	1898	.	+	0	ID=cds2;Parent=gene2
+chr1	.	gene	3000	3497	.	+	.	ID=gene3;Name=gene3
+chr1	.	CDS	3000	3497	.	+	0	ID=cds3;Parent=gene3
