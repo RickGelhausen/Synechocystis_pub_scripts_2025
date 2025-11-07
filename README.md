@@ -186,6 +186,15 @@ bash weblogo/create_logo.sh \
     -s demo_data/weblogo/output_logo.png
 ```
 
+
+## Tests
+
+Unittests for the metagene_analysis code can be run using `pytest`.
+
+```
+pytest metagene_analysis
+```
+
 ## License
 
 GPL-3.0 license
