@@ -54,6 +54,7 @@ mamba activate metagene_profiling
 - plotly ≥ 6.3.1
 
 > Other versions may work but were not tested.
+> **⚠️ Platform Note:** This tool was developed and tested on a Linux system. It should not contain Linux-specific commands, but it was never tested on Windows or macOS.
 
 ## Usage
 
