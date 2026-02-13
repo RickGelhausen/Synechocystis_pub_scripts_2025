@@ -55,7 +55,7 @@ mamba activate metagene_profiling
 
 > Other versions may work but were not tested.
 
-> **⚠️ Platform Note:** This tool was developed and tested on a Linux system. It should not contain Linux-specific commands, but it was never tested on Windows or macOS.
+> **⚠️ Platform Note:** This tool was developed and tested on a Linux system (Ubuntu 22.04.5 LTS, Ubuntu 20.04 LTS). It should not contain Linux-specific commands, but it was never tested on Windows or macOS.
 
 ## Usage
 
