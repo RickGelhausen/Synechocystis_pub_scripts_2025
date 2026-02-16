@@ -89,7 +89,7 @@ def aggregate_coverage_dataframe(df, read_length_list=None, config=None):
 
     # Sum counts across all genes for each position
     df_agg = df.groupby(['chrom', 'sample', 'read_length', 'position'])['count'].sum().reset_index()
-    print(config)
+
     # Fill in missing positions with zeros
     if config is not None:
         positions_outside = config.get('positionsOutsideORF', 100)
