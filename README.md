@@ -196,6 +196,110 @@ Unittests for the metagene_analysis code can be run using `pytest`.
 ```
 pytest metagene_analysis
 ```
+## Reproduction Instructions
+
+This section provides a detailed, step-by-step guide for reproducing all data used in the study. While some steps could be simplified, we describe the exact process as it was originally carried out.
+
+### Prerequisites
+
+Several steps in this guide rely on alignment files (`.bam`) as input. This includes the metagene profiling scripts described in this repository, as well as peak calling using ORFBounder. Generating these alignment files is therefore the first step.
+
+> **Note:** All external tools used in this guide (HRIBO, ORFBounder, SRA Tools, etc.) have their own detailed documentation and usage instructions on their respective GitHub repositories. This guide focuses on how we applied these tools to reproduce our specific results, not on how to install or configure them in general.
+
+### Step 1: Generate Alignment Files, Coverage Files, and Ribo-Seq-Based Predictions
+
+Quality control, alignment, and all other analyses described in this subsection were performed using the [HRIBO pipeline](https://github.com/RickGelhausen/HRIBO).
+
+#### 1.1 Download Raw Data from SRA
+
+All raw data are available via [GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE246336) and can be downloaded using [SRA Tools](https://github.com/ncbi/sra-tools).
+
+Use the `download.sh` script to download the data in the correct format for further processing.
+
+> **Note:** Due to the timeline of the original analysis, TIS and TTS data were processed in two separate HRIBO runs.
+
+#### 1.2 Download HRIBO
+
+Download the HRIBO pipeline into each subfolder (`TIS_run` and `TTS_run`):
+
+```bash
+wget https://github.com/RickGelhausen/HRIBO/archive/refs/tags/1.8.1.tar.gz
+tar -xzf 1.8.1.tar.gz; mv HRIBO-1.8.1 HRIBO; rm 1.8.1.tar.gz;
+```
+
+#### 1.3 Prepare Sample and Config Files
+
+The sample sheets and config files used in the analysis are available in the [`reproduction_data` folder](https://github.com/RickGelhausen/Synechocystis_pub_scripts_2025/tree/main/reproduction_data/HRIBO_data) for both TIS and TTS. Copy them into the respective HRIBO folders you just created.
+
+#### 1.4 Run HRIBO
+
+> **Note:** This workflow involves read mapping. While the bacterial genome is relatively small, you may still encounter memory issues on machines with limited resources. A minimum of **16 GB RAM** is recommended.
+
+```bash
+snakemake --use-conda --use-singularity --singularity-args " -c " -s HRIBO/Snakefile --configfile config.yaml -j 20 --latency-wait 50
+```
+
+> **Note:** The `--singularity-args " -c "` flag was needed for the Snakemake version used during our analysis and may not be required for newer versions. Consult the [Snakemake documentation](https://snakemake.readthedocs.io/) if you encounter compatibility issues.
+
+#### 1.5 Inspect Results
+
+This generates the alignment files (`.bam`) required for downstream analyses, as well as an overview result file (`.xlsx`) with quality control metrics and prediction results.
+
+---
+
+### Step 2: Metagene Profiling and Weblogos
+
+Metagene profiling was conducted using the scripts available in this repository. It requires the `.bam` files generated in Step 1.
+
+#### 2.1 Prepare Input
+
+The metagene profiling script requires a config file with the appropriate setup. The config files used for the study are available in the [`reproduction_data` folder](https://github.com/RickGelhausen/Synechocystis_pub_scripts_2025/tree/main/reproduction_data/metagene_data).
+
+#### 2.2 Adjust the Config File
+
+Update the config file to match your local file system. Make sure the paths to the annotation, genome, and `.bam` files are set correctly.
+
+#### 2.3 Run the Metagene Profiling Script
+
+```bash
+uv run python3 metagene_profiling.py -c config_TIS.yaml
+uv run python3 metagene_profiling.py -c config_TTS.yaml
+```
+
+This generates output tables and figures. Additional publication-quality figures were generated from these output tables.
+
+#### 2.4 Extract Metagene Data for Weblogos
+
+The previous step produces `.json` files containing detailed per-gene read count information. To generate weblogos, we identified genes contributing to positions of interest in the metagene plots and extracted them using the locus extraction script.
+
+> **Note:** The extraction scripts are designed to be run from within their respective directories, as each step constituted an independent analysis.
+
+---
+
+### Step 3: ORFBounder
+
+Running ORFBounder requires several input files: annotation, genome, alignment files, offset, read length, and mapped read counts.
+
+- **Annotation, genome, and alignment files** can be taken directly from the HRIBO output (Step 1).
+- **All other configuration files** (including the `mapped_reads` file, which is also available in the HRIBO `readcounting` folder) are provided in the [`reproduction_data` folder](https://github.com/RickGelhausen/Synechocystis_pub_scripts_2025/tree/main/reproduction_data/ORFBounder_data).
+
+#### 3.1 Configure ORFBounder
+
+Set the paths to all input files in `config_experiments.tsv`. This file allows you to specify and run multiple ORFBounder experiments sequentially.
+
+#### 3.2 Run ORFBounder
+
+```bash
+uv run call_ORFBounder.py -c config_experiments.tsv -r orfbounder_output_folder
+```
+
+This creates an output folder for each experiment, containing Excel sheets and GFF files.
+
+---
+
+### Step 4: Filtering and Manual Inspection
+
+All remaining analysis steps were performed manually using Excel/LibreOffice and a genome browser. Details on this process are described in the manuscript.
 
 ## License
 

@@ -1,0 +1,11 @@
+{
+	"RIBO-WTmono-1" : "32",
+	"RIBO-WTmono-2" : "32",
+	"TTS-WTmono-1" : "32",
+	"TTS-WTmono-2" : "32",
+	"RIBO-WTdi-1" : "56",
+	"RIBO-WTdi-2" : "56",
+	"TTS-WTdi-1" : "56",
+	"TTS-WTdi-2" : "56",
+	"default": "32"
+}

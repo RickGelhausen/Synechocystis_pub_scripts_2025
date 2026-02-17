@@ -1,0 +1,10 @@
+method	condition	replicate	fastqFile	fastqFile2
+RIBO	WT	1	"fastq/Synechocystis_TIS_Ret_Untreated_RBP.fq.gz"	
+RIBO	WT	2	"fastq/Synechocystis_TIS2_TTS2_Untreated_RBP_26_34.fq.gz"	
+RNA	WT	1	"fastq/Synechocystis_TIS_Ret_TR.fq.gz"	
+RNA	WT	2	"fastq/Synechocystis_TIS2_TR.fq.gz"	
+TIS	WT	1	"fastq/Synechocystis_TIS_Ret_RET_RBP.fq.gz"	
+TIS	WT	2	"fastq/Synechocystis_TIS2_Ret_RBP_26_34.fq.gz"	
+RNATIS	WT	1	"fastq/Synechocystis_TIS_Ret_TR.fq.gz"	
+RNATIS	WT	2	"fastq/Synechocystis_TIS2_TR.fq.gz"	
+
